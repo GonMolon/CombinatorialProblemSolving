@@ -40,7 +40,7 @@ struct BWPInstance {
                 boxes.push_back({x, y});
                 total_area += x * y;
                 L_lower_bound = max(L_lower_bound, x);
-                L_upper_bound += y;
+                L_upper_bound += y <= W ? x : y;
             }
         }
         L_lower_bound = max(L_lower_bound, (total_area + W - 1) / W);
