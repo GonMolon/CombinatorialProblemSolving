@@ -8,7 +8,7 @@ LIBS = -lgecodedriver    -lgecodesearch  \
 all: BWP checker
        	
 BWP: BWP.cpp
-	$(CXX) -F$(DIR) -c BWP.cpp
+	$(CXX) -F$(DIR) -c BWP.cpp -g
 	$(CXX) -F$(DIR) -framework gecode -o BWP BWP.o
 
 
