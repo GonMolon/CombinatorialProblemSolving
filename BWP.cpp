@@ -54,8 +54,7 @@ public:
     BWPInstance instance;
 
     IntVar L;
-    IntVarArray pos_x;
-    IntVarArray pos_y;
+    IntVarArray pos;
     IntVarArray dir;
     BoolVarArray overlap_top;
     BoolVarArray overlap_bottom;
@@ -64,8 +63,7 @@ public:
     
     BWP(BWPInstance instance) :
         L(*this, instance.L_lower_bound, instance.L_upper_bound),
-        pos_x(*this, instance.N), 
-        pos_y(*this, instance.N),
+        pos(*this, instance.N), 
         dir(*this, instance.N, 0, 1),
         overlap_top(*this, instance.N * (instance.N - 1) / 2, 0, 1),
         overlap_bottom(*this, instance.N * (instance.N - 1) / 2, 0, 1),
@@ -76,7 +74,7 @@ public:
 
         vector<LinIntExpr> width(instance.N);
         vector<LinIntExpr> height(instance.N);
-        IntVarArgs all_variables(instance.N * 3);
+        IntVarArgs all_variables(instance.N * 2);
 
         cerr << "L: " << L << endl;
 
@@ -84,19 +82,17 @@ public:
             width[i] = dir[i] * instance.boxes[i].first + (1 - dir[i]) * instance.boxes[i].second;
             height[i] = dir[i] * instance.boxes[i].second + (1 - dir[i]) * instance.boxes[i].first;
 
-            pos_x[i] = IntVar(*this, 0, instance.W - instance.boxes[i].first);
-            pos_y[i] = IntVar(*this, 0, instance.L_upper_bound - instance.boxes[i].first);
+            pos[i] = IntVar(*this, 0, instance.W * (instance.L_upper_bound - instance.boxes[i].first + 1) - 1);
 
-            rel(*this, pos_x[i] <= instance.W - width[i]);
+            rel(*this, pos[i] % instance.W <= instance.W - width[i]);
 
-            all_variables[i] = pos_x[i];
-            all_variables[instance.N + i] = pos_y[i];
-            all_variables[instance.N*2 + i] = dir[i];
+            all_variables[i] = pos[i];
+            all_variables[instance.N + i] = dir[i];
         }
 
         int index = 0;
         for(int i = 0; i < instance.N; ++i) {
-            rel(*this, L >= pos_y[i] + height[i]);
+            rel(*this, L >= pos[i] / instance.W + height[i]);
 
             for(int j = i + 1; j < instance.N; ++j) {
 
@@ -106,10 +102,10 @@ public:
                 BoolVar right(overlap_right[index]);
                 ++index;
 
-                rel(*this, pos_x[j] + right * instance.W                >= pos_x[i] + width[i]);
-                rel(*this, pos_x[j] + width[j]                          <= pos_x[i] + left * instance.W);
-                rel(*this, pos_y[j] + bottom * instance.L_upper_bound   >= pos_y[i] + height[i]);
-                rel(*this, pos_y[j] + height[j]                         <= pos_y[i] + top * instance.L_upper_bound);
+                rel(*this, pos[j] % instance.W + right * instance.W                 >= pos[i] % instance.W + width[i]);
+                rel(*this, pos[j] % instance.W + width[j]                           <= pos[i] % instance.W + left * instance.W);
+                rel(*this, pos[j] / instance.W + bottom * instance.L_upper_bound    >= pos[i] / instance.W + height[i]);
+                rel(*this, pos[j] / instance.W + height[j]                          <= pos[i] / instance.W + top * instance.L_upper_bound);
                 rel(*this, top + bottom + left + right <= 3);
             }
         }
@@ -118,9 +114,7 @@ public:
         auto weight_func = [](const Space& _home, IntVar var, int i) {
             const BWP& home = static_cast<const BWP&>(_home);
             if(i < home.instance.N) {
-                return 1 + home.instance.boxes[i].first * home.instance.boxes[i].second / (home.instance.W * home.instance.L_upper_bound);
-            } else if((home.instance.N <= i) && (i < 2 * home.instance.N)) {
-                return 2 + home.instance.boxes[i - home.instance.N].first * home.instance.boxes[i - home.instance.N].second / (home.instance.W * home.instance.L_upper_bound);
+                return 1 + home.instance.boxes[i].first * home.instance.boxes[i].second;
             } else {
                 return 0;
             }
@@ -136,8 +130,7 @@ public:
     BWP(BWP& other) : Space(other) {
         instance = other.instance;
         L.update(*this, other.L);
-        pos_x.update(*this, other.pos_x);
-        pos_y.update(*this, other.pos_y);
+        pos.update(*this, other.pos);
         dir.update(*this, other.dir);
         overlap_top.update(*this, other.overlap_top);
         overlap_bottom.update(*this, other.overlap_bottom);
@@ -156,9 +149,9 @@ public:
     void print(ostream& stream) const {
         stream << L.min() << endl;
         for(int i = 0; i < instance.N; ++i) {
-            stream << pos_x[i] << " " << pos_y[i] << " " << 
-            pos_x[i].val() + dir[i].val() * instance.boxes[i].first + (1 - dir[i].val()) * instance.boxes[i].second - 1 << " " <<
-            pos_y[i].val() + dir[i].val() * instance.boxes[i].second + (1 - dir[i].val()) * instance.boxes[i].first - 1 << endl;
+            stream << pos[i].val() % instance.W << " " << pos[i].val() / instance.W << " " << 
+            pos[i].val() % instance.W + dir[i].val() * instance.boxes[i].first + (1 - dir[i].val()) * instance.boxes[i].second - 1 << " " <<
+            pos[i].val() / instance.W + dir[i].val() * instance.boxes[i].second + (1 - dir[i].val()) * instance.boxes[i].first - 1 << endl;
         }
     }
 };
