@@ -25,7 +25,7 @@ struct BWPDescription {
     void read() {
         cin >> W;
         cin >> N;
-        cout << W << " " << W << endl;
+        cout << W << " " << N << endl;
         int count;
         int y;
         int x;
@@ -53,9 +53,23 @@ public:
     
     BWP(BWPDescription description) 
       : L(*this, 0, description.L_bound), 
-        pos_x(*this, description.boxes.size(), 0, description.W), 
-        pos_y(*this, description.boxes.size(), 0, description.L_bound) {
+        pos_x(*this, description.boxes.size(), 0, description.W - 1), 
+        pos_y(*this, description.boxes.size(), 0, description.L_bound - 1) {
 
+        
+
+        branch(*this, pos_y, INT_VAR_NONE(), INT_VAL_MIN());
+    }
+
+    virtual void constrain(const Space& _prev) {
+      const BWP& prev = static_cast<const SendMostMoney&>(_prev);
+      rel(*this, L < prev.L);
+    }
+
+    BWP(BWP& other) : Space(other) {
+        L.update(*this, other.L);
+        pos_x.update(*this, other.pos_x);
+        pos_y.update(*this, other.pos_y);
     }
 
     virtual Space* copy() {
@@ -63,7 +77,7 @@ public:
     }
 
     void print() const {
-        cout << L << endl;
+        cout << L.min() << endl;
         for(int i = 0; i < pos_x.size(); ++i) {
             cout << pos_x[i] << " " << pos_y[i] << endl;
         }
@@ -85,8 +99,8 @@ int main() {
             delete best_solution;
         }
         best_solution = solution;
-        // cout << "Solution found" << endl;
-        // solution->print(); 
+        cout << "Solution found" << endl;
+        solution->print();
     }
     best_solution->print();
     delete best_solution;
