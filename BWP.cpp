@@ -39,11 +39,11 @@ struct BWPInstance {
             for(int j = 0; j < count; ++j) {
                 boxes.push_back({x, y});
                 total_area += x * y;
-                L_lower_bound = min(L_lower_bound, x);
+                L_lower_bound = max(L_lower_bound, x);
                 L_upper_bound += y;
             }
         }
-        L_lower_bound = min(L_lower_bound, (total_area + W - 1) / W);
+        L_lower_bound = max(L_lower_bound, (total_area + W - 1) / W);
     }
 };
 
@@ -78,6 +78,8 @@ public:
         vector<LinIntExpr> height(instance.N);
         IntVarArgs all_variables(instance.N * 3);
 
+        cerr << "L: " << L << endl;
+
         for(int i = 0; i < instance.N; ++i) {
             width[i] = dir[i] * instance.boxes[i].first + (1 - dir[i]) * instance.boxes[i].second;
             height[i] = dir[i] * instance.boxes[i].second + (1 - dir[i]) * instance.boxes[i].first;
@@ -104,15 +106,15 @@ public:
                 BoolVar right(overlap_right[index]);
                 ++index;
 
-                rel(*this, pos_x[j] + right * instance.W                >= pos_x[i] + width[i], IPL_BND);
-                rel(*this, pos_x[j] + width[j]                          <= pos_x[i] + left * instance.W, IPL_BND);
-                rel(*this, pos_y[j] + bottom * instance.L_upper_bound   >= pos_y[i] + height[i], IPL_BND);
-                rel(*this, pos_y[j] + height[j]                         <= pos_y[i] + top * instance.L_upper_bound, IPL_BND);
+                rel(*this, pos_x[j] + right * instance.W                >= pos_x[i] + width[i]);
+                rel(*this, pos_x[j] + width[j]                          <= pos_x[i] + left * instance.W);
+                rel(*this, pos_y[j] + bottom * instance.L_upper_bound   >= pos_y[i] + height[i]);
+                rel(*this, pos_y[j] + height[j]                         <= pos_y[i] + top * instance.L_upper_bound);
                 rel(*this, top + bottom + left + right <= 3);
             }
         }
 
-        branch(*this, all_variables, INT_VAR_DEGREE_MAX(), INT_VAL_MAX());
+        branch(*this, all_variables, INT_VAR_RND(1), INT_VAL_RND(1));
     }
 
     virtual void constrain(const Space& _prev) {
