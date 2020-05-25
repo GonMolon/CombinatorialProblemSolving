@@ -22,6 +22,7 @@ def run(correct_answers):
                             assert correct_answers[instance] == output_f_read.readlines()[len(instance_f_read.readlines())]
                 except subprocess.TimeoutExpired:
                     print("Timeout expired")
+                    process.kill()
                     os.remove(output_path)
 
 

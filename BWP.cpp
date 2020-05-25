@@ -79,8 +79,8 @@ public:
         IntVarArgs all_variables(instance.N * 3);
 
         for(int i = 0; i < instance.N; ++i) {
-            width[i] = (1 - dir[i]) * instance.boxes[i].first + dir[i] * instance.boxes[i].second;
-            height[i] = (1 - dir[i]) * instance.boxes[i].second + dir[i] * instance.boxes[i].first;
+            width[i] = dir[i] * instance.boxes[i].first + (1 - dir[i]) * instance.boxes[i].second;
+            height[i] = dir[i] * instance.boxes[i].second + (1 - dir[i]) * instance.boxes[i].first;
 
             pos_x[i] = IntVar(*this, 0, instance.W - instance.boxes[i].first);
             pos_y[i] = IntVar(*this, 0, instance.L_upper_bound - instance.boxes[i].first);
@@ -112,7 +112,7 @@ public:
             }
         }
 
-        branch(*this, all_variables, tiebreak(INT_VAR_SIZE_MIN(), INT_VAR_DEGREE_MAX()), INT_VAL_MIN());
+        branch(*this, all_variables, INT_VAR_DEGREE_MAX(), INT_VAL_MAX());
     }
 
     virtual void constrain(const Space& _prev) {
@@ -137,11 +137,15 @@ public:
     }
 
     void print() const {
-        cout << L.min() << endl;
+        print(cout);
+    }
+
+    void print(ostream& stream) const {
+        stream << L.min() << endl;
         for(int i = 0; i < instance.N; ++i) {
-            cout << pos_x[i] << " " << pos_y[i] << " " << 
-            pos_x[i].val() + (1 - dir[i].val()) * instance.boxes[i].first + dir[i].val() * instance.boxes[i].second - 1 << " " <<
-            pos_y[i].val() + (1 - dir[i].val()) * instance.boxes[i].second + dir[i].val() * instance.boxes[i].first - 1 << endl;
+            stream << pos_x[i] << " " << pos_y[i] << " " << 
+            pos_x[i].val() + dir[i].val() * instance.boxes[i].first + (1 - dir[i].val()) * instance.boxes[i].second - 1 << " " <<
+            pos_y[i].val() + dir[i].val() * instance.boxes[i].second + (1 - dir[i].val()) * instance.boxes[i].first - 1 << endl;
         }
     }
 };
@@ -162,6 +166,7 @@ int main() {
         }
         best_solution = solution;
         cerr << "Solution found: " << solution->L.min() << endl;
+        solution->print(cerr);
     }
     best_solution->print();
     delete best_solution;
