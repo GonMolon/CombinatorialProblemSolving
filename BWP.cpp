@@ -114,7 +114,18 @@ public:
             }
         }
 
-        branch(*this, all_variables, INT_VAR_RND(1), INT_VAL_RND(1));
+
+        auto weight_func = [](const Space& _home, IntVar var, int i) {
+            const BWP& home = static_cast<const BWP&>(_home);
+            if(i < home.instance.N) {
+                return 1 + home.instance.boxes[i].first * home.instance.boxes[i].second / (home.instance.W * home.instance.L_upper_bound);
+            } else if((home.instance.N <= i) && (i < 2 * home.instance.N)) {
+                return 2 + home.instance.boxes[i - home.instance.N].first * home.instance.boxes[i - home.instance.N].second / (home.instance.W * home.instance.L_upper_bound);
+            } else {
+                return 0;
+            }
+        };
+        branch(*this, all_variables, INT_VAR_MERIT_MAX(weight_func), INT_VAL_MIN());
     }
 
     virtual void constrain(const Space& _prev) {
