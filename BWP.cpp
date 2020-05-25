@@ -13,13 +13,15 @@ struct BWPInstance {
 
     int W;
     int N;
-    int L_bound;
+    int L_upper_bound;
+    int L_lower_bound;
     vector<pair<int, int>> boxes;
 
     BWPInstance() {
         W = 0;
         N = 0;
-        L_bound = 0;
+        L_upper_bound = 0;
+        L_lower_bound = 0;
     }
 
     void read() {
@@ -29,23 +31,26 @@ struct BWPInstance {
         int count;
         int y;
         int x;
+        int total_area = 0;
         while(cin >> count) {
             cin >> x;
             cin >> y;
             cout << count << " " << x << " " << y << endl;
             for(int j = 0; j < count; ++j) {
                 boxes.push_back({x, y});
-                L_bound += y;
+                total_area += x * y;
+                L_lower_bound = min(L_lower_bound, x);
+                L_upper_bound += y;
             }
         }
+        L_lower_bound = min(L_lower_bound, (total_area + W - 1) / W);
     }
 };
 
 
 class BWP : public Space {
 
-protected:
-
+public:
     BWPInstance instance;
 
     IntVar L;
@@ -56,11 +61,9 @@ protected:
     BoolVarArray overlap_bottom;
     BoolVarArray overlap_left;
     BoolVarArray overlap_right;
-
-public:
     
     BWP(BWPInstance instance) :
-        L(*this, 1, instance.L_bound + 10000),
+        L(*this, instance.L_lower_bound, instance.L_upper_bound),
         pos_x(*this, instance.N), 
         pos_y(*this, instance.N),
         dir(*this, instance.N, 0, 1),
@@ -71,20 +74,29 @@ public:
 
         this->instance = instance;
 
+        vector<LinIntExpr> width(instance.N);
+        vector<LinIntExpr> height(instance.N);
+        IntVarArgs all_variables(instance.N * 3);
+
         for(int i = 0; i < instance.N; ++i) {
-            pos_x[i] = IntVar(*this, 0, instance.W - instance.boxes[i].second);
-            pos_y[i] = IntVar(*this, 0, instance.L_bound - instance.boxes[i].second);
+            width[i] = (1 - dir[i]) * instance.boxes[i].first + dir[i] * instance.boxes[i].second;
+            height[i] = (1 - dir[i]) * instance.boxes[i].second + dir[i] * instance.boxes[i].first;
+
+            pos_x[i] = IntVar(*this, 0, instance.W - instance.boxes[i].first);
+            pos_y[i] = IntVar(*this, 0, instance.L_upper_bound - instance.boxes[i].first);
+
+            rel(*this, pos_x[i] <= instance.W - width[i]);
+
+            all_variables[i] = pos_x[i];
+            all_variables[instance.N + i] = pos_y[i];
+            all_variables[instance.N*2 + i] = dir[i];
         }
 
         int index = 0;
         for(int i = 0; i < instance.N; ++i) {
-            auto i_width = dir[i] * instance.boxes[i].first + (1 - dir[i]) * instance.boxes[i].second;
-            auto i_height = dir[i] * instance.boxes[i].second + (1 - dir[i]) * instance.boxes[i].first;
-            rel(*this, L >= pos_y[i] + i_height);
+            rel(*this, L >= pos_y[i] + height[i]);
 
             for(int j = i + 1; j < instance.N; ++j) {
-                auto j_width = dir[j] * instance.boxes[j].first + (1 - dir[j]) * instance.boxes[j].second;
-                auto j_height = dir[j] * instance.boxes[j].second + (1 - dir[j]) * instance.boxes[j].first;
 
                 BoolVar top(overlap_top[index]);
                 BoolVar bottom(overlap_bottom[index]);
@@ -92,20 +104,15 @@ public:
                 BoolVar right(overlap_right[index]);
                 ++index;
 
-                rel(*this, pos_x[j] + right * instance.W        >= pos_x[i] + i_width);
-                rel(*this, pos_x[j] + j_width                   <= pos_x[i] + left * instance.W);
-                rel(*this, pos_y[j] + bottom * instance.L_bound >= pos_y[i] + i_height);
-                rel(*this, pos_y[j] + j_height                  <= pos_y[i] + top * instance.L_bound);
+                rel(*this, pos_x[j] + right * instance.W                >= pos_x[i] + width[i], IPL_BND);
+                rel(*this, pos_x[j] + width[j]                          <= pos_x[i] + left * instance.W, IPL_BND);
+                rel(*this, pos_y[j] + bottom * instance.L_upper_bound   >= pos_y[i] + height[i], IPL_BND);
+                rel(*this, pos_y[j] + height[j]                         <= pos_y[i] + top * instance.L_upper_bound, IPL_BND);
                 rel(*this, top + bottom + left + right <= 3);
             }
         }
-        IntVarArgs variables(instance.N * 3);
-        for(int i = 0; i < instance.N; ++i) {
-            variables[i] = pos_x[i];
-            variables[instance.N + i] = pos_y[i];
-            variables[instance.N*2 + i] = dir[i];
-        }
-        branch(*this, variables, INT_VAR_DEGREE_MAX(), INT_VAL_MAX());
+
+        branch(*this, all_variables, tiebreak(INT_VAR_SIZE_MIN(), INT_VAR_DEGREE_MAX()), INT_VAL_MIN());
     }
 
     virtual void constrain(const Space& _prev) {
@@ -133,8 +140,8 @@ public:
         cout << L.min() << endl;
         for(int i = 0; i < instance.N; ++i) {
             cout << pos_x[i] << " " << pos_y[i] << " " << 
-            pos_x[i].val() + dir[i].val() * instance.boxes[i].first + (1 - dir[i].val()) * instance.boxes[i].second - 1 << " " <<
-            pos_y[i].val() + dir[i].val() * instance.boxes[i].second + (1 - dir[i].val()) * instance.boxes[i].first - 1 << endl;
+            pos_x[i].val() + (1 - dir[i].val()) * instance.boxes[i].first + dir[i].val() * instance.boxes[i].second - 1 << " " <<
+            pos_y[i].val() + (1 - dir[i].val()) * instance.boxes[i].second + dir[i].val() * instance.boxes[i].first - 1 << endl;
         }
     }
 };
@@ -154,8 +161,7 @@ int main() {
             delete best_solution;
         }
         best_solution = solution;
-        // cout << "Solution found:" << endl;
-        // solution->print();
+        cerr << "Solution found: " << solution->L.min() << endl;
     }
     best_solution->print();
     delete best_solution;
