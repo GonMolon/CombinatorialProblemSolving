@@ -39,7 +39,7 @@ struct BWPInstance {
             for(int j = 0; j < count; ++j) {
                 boxes.push_back({x, y});
                 total_area += x * y;
-                L_lower_bound = max(L_lower_bound, x);
+                L_lower_bound = max(L_lower_bound, y <= W ? x : y);
                 L_upper_bound += y <= W ? x : y;
             }
         }
@@ -85,6 +85,9 @@ public:
             pos[i] = IntVar(*this, 0, instance.W * (instance.L_upper_bound - instance.boxes[i].first + 1) - 1);
 
             rel(*this, pos[i] % instance.W <= instance.W - width[i]);
+            if(instance.boxes[i].first == instance.boxes[i].second || instance.boxes[i].second > instance.W) {
+                rel(*this, dir[i] == 1);
+            }
 
             all_variables[i] = pos[i];
             all_variables[instance.N + i] = dir[i];
@@ -114,7 +117,7 @@ public:
         auto weight_func = [](const Space& _home, IntVar var, int i) {
             const BWP& home = static_cast<const BWP&>(_home);
             if(i < home.instance.N) {
-                return 1 + home.instance.boxes[i].first * home.instance.boxes[i].second;
+                return home.instance.boxes[i].first * home.instance.boxes[i].second;
             } else {
                 return 0;
             }
