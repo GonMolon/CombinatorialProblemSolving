@@ -4,15 +4,9 @@ LIBS = -lgecodedriver    -lgecodesearch  \
        -lgecodeminimodel -lgecodeint     \
        -lgecodekernel    -lgecodesupport
 
-
-all: BWP checker
        	
 BWP: BWP.cpp
 	$(CXX) -F$(DIR) -c BWP.cpp -g
 	$(CXX) -F$(DIR) -framework gecode -o BWP BWP.o
-
-
-checker: checker.cc
-	$(CXX) -o checker checker.cc
 
 

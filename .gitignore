@@ -2,3 +2,4 @@ BWP
 checker
 output/
 *.o
+.DS_Store

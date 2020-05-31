@@ -1,12 +1,13 @@
+import sys
 import os
 import subprocess
 
 
-def run(correct_answers):
-    subprocess.Popen(['make']).wait()
+def run(path, correct_answers):
+    subprocess.Popen(['make'], cwd=path).wait()
 
-    if not os.path.exists('output'):
-        os.makedirs('output')
+    if not os.path.exists(path + '/output'):
+        os.makedirs(path + '/output')
 
     total_instances = len(os.listdir('instances'))
     total_answers = len(correct_answers)
@@ -16,10 +17,10 @@ def run(correct_answers):
 
     for instance in sorted(os.listdir('instances')):
         if instance.endswith(".inp"):
-            output_path = 'output/' + instance[:-len('inp')] + 'out'
+            output_path = path + '/output/' + instance[:-len('inp')] + 'out'
             with open('instances/' + instance, 'r') as instance_f, open(output_path, 'w') as output_f:
                 print("Running", instance)
-                process = subprocess.Popen(['./BWP'], stdin=instance_f, stdout=output_f)
+                process = subprocess.Popen(['./BWP'], cwd=path, stdin=instance_f, stdout=output_f)
                 try:
                     process.wait(timeout=60)
                     count_finish += 1
@@ -47,7 +48,11 @@ def get_correct_answers():
 
 
 def main():
+    if len(sys.argv) != 2:
+        print('Usage: python run.py {1_constraint_programming, 2_linear_programming, 3_sat}')
+        return 1
+    path = sys.argv[1]
     correct_answers = get_correct_answers()
-    run(correct_answers)
+    run(path, correct_answers)
 
 main()
