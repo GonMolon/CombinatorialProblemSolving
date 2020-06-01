@@ -4,9 +4,13 @@ LIBS = -lgecodedriver    -lgecodesearch  \
        -lgecodeminimodel -lgecodeint     \
        -lgecodekernel    -lgecodesupport
 
-       	
-BWP: BWP.cpp
+all: BWP
+
+
+BWP.o: BWP.cpp
 	$(CXX) -F$(DIR) -c BWP.cpp -g
+
+BWP: BWP.o
 	$(CXX) -F$(DIR) -framework gecode -o BWP BWP.o
 
 
