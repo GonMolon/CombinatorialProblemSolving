@@ -24,10 +24,16 @@ def run(path, correct_answers):
                 try:
                     process.wait(timeout=60)
                     count_finish += 1
-                    if instance in correct_answers:
-                        count_correct += 1
-                        with open('instances/' + instance, 'r') as instance_f_read, open(output_path, 'r') as output_f_read:
+                    with open(output_path, 'r') as output_f_read:
+                        checker = subprocess.Popen(['../checker'], cwd=path, stdin=output_f_read, stdout=subprocess.PIPE)
+                        checker_output = checker.communicate()[0].decode("utf-8")
+                        print(checker_output)
+                        assert checker_output[:2] == 'OK'
+                    with open('instances/' + instance, 'r') as instance_f_read, open(output_path, 'r') as output_f_read:
+                        if instance in correct_answers:
                             assert correct_answers[instance] == output_f_read.readlines()[len(instance_f_read.readlines())]
+                            count_correct += 1
+                    
                 except subprocess.TimeoutExpired:
                     print("Timeout expired")
                     count_timeout += 1
