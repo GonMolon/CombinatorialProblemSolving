@@ -3,7 +3,7 @@ ILOSTLBEGIN
 
 #include <vector>
 #include <iostream>
-#include <list>
+#include <math.h>
 #include "../include/BWPInstance.hh"
 
 
@@ -14,7 +14,6 @@ IloIntVar L;
 IloIntVarArray pos_x;
 IloIntVarArray pos_y;
 IloBoolVarArray dir;
-list<IloOr> overlapping_constraints;
 
 IloModel create_model(IloEnv env, BWPInstance instance) {
     IloModel model = IloModel(env);
@@ -40,16 +39,13 @@ IloModel create_model(IloEnv env, BWPInstance instance) {
     for(int i = 0; i < instance.N; ++i) {
         model.add(L >= pos_y[i] + height(i));
 
-        for(int j = i + 1; j < instance.N; ++j) {
-            IloOr constraint = 
+        for(int j = i + 1; j < instance.N; ++j) {                
+            model.add(
                 (pos_x[j] >= pos_x[i] + width(i)) || 
                 (pos_x[j] + width(j) <= pos_x[i]) || 
                 (pos_y[j] >= pos_y[i] + height(i)) || 
-                (pos_y[j] + height(j) <= pos_y[i]);
-            model.add(
-                constraint
+                (pos_y[j] + height(j) <= pos_y[i])
             );
-            overlapping_constraints.push_back(constraint);
         }
     }
 
@@ -62,19 +58,12 @@ IloModel create_model(IloEnv env, BWPInstance instance) {
 void print_solution(IloCplex cplex, BWPInstance instance) {
     cout << cplex.getObjValue() << endl;
     for(int i = 0; i < instance.N; ++i) {
-        IloInt x = cplex.getValue(pos_x[i]);
-        IloInt y = cplex.getValue(pos_y[i]);
+        int x = round(cplex.getValue(pos_x[i]));
+        int y = round(cplex.getValue(pos_y[i]));
         IloBool d = cplex.getValue(dir[i]);
         cout << x << " " << y << " " 
         << x + d * instance.boxes[i].first + (1 - d) * instance.boxes[i].second - 1 << " " 
         << y + d * instance.boxes[i].second + (1 - d) * instance.boxes[i].first - 1 << endl;
-    }
-    for(IloOr constraint : overlapping_constraints) {
-        if(not cplex.getValue(constraint)) {
-            cerr << "Constraint:" << endl;
-            cerr << constraint << endl;
-            cerr << "is not satisfied in the found solution!!!!!!" << endl;
-        }
     }
 }
 
