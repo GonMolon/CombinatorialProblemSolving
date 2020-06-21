@@ -78,35 +78,47 @@ struct EncodedProblem {
 #define height(i) (dir * instance.boxes[i].second + (1 - dir) * instance.boxes[i].first)
 
 EncodedProblem encode(BWPInstance instance, int L) {
-    EncodedProblem problem;
-
     int N = instance.N;
     int W = instance.W;
+    EncodedProblem problem;
+    problem.dirs = vector<var_id>(N);
+    problem.pos_x = vector<vector<var_id>>(N);
+    problem.pos_y = vector<vector<var_id>>(N);
+
     vector<var_id>& dirs = problem.dirs;
     vector<vector<var_id>>& pos_x = problem.pos_x;
     vector<vector<var_id>>& pos_y = problem.pos_y;
     CNF& cnf = problem.cnf;
-
-    dirs = vector<var_id>(N);
-    pos_x = vector<vector<var_id>>(N);
-    pos_y = vector<vector<var_id>>(N);
+    int& num_vars = problem.num_vars;
 
     // Initializing variables
     for(int i = 0; i < N; ++i) {
-        dirs[i] = ++problem.num_vars;
+        dirs[i] = ++num_vars;
         pos_x[i] = vector<var_id>(W);
         pos_y[i] = vector<var_id>(L);
         for(int x = 0; x < W; ++x) {
-            pos_x[i][x] = ++problem.num_vars;
+            pos_x[i][x] = ++num_vars;
         }
         for(int y = 0; y < L; ++y) {
-            pos_y[i][y] = ++problem.num_vars;
+            pos_y[i][y] = ++num_vars;
         }
     }
 
-    cerr << "Num variables = " << problem.num_vars << endl;
+    cerr << "Num variables = " << num_vars << endl;
 
     // Valid values
+    for(int i = 0; i < N; ++i) {
+        vector<var_id> ALO_pos_x(W);
+        for(int x = 0; x < W; ++x) {
+            ALO_pos_x[x] = pos_x[i][x];
+        }
+        cnf.push_back(ALO_pos_x);
+        vector<var_id> ALO_pos_y(L);
+        for(int y = 0; y < L; ++y) {
+            ALO_pos_y[y] = pos_y[i][y];
+        }
+        cnf.push_back(ALO_pos_y);
+    }
 
 
     cerr << cnf.size() << " clauses for valid constraints" << endl;
