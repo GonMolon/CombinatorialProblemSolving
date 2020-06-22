@@ -1,9 +1,6 @@
-#include <stdlib.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <set>
-#include <map>
 #include <array>
 
 #include "../include/BWPInstance.hh"
@@ -69,6 +66,7 @@ struct EncodedProblem {
     vector<var_id> dirs;
     vector<vector<var_id>> pos_x;
     vector<vector<var_id>> pos_y;
+    vector<vector<vector<var_id>>> bitmap;
 
     CNF cnf;
     int num_vars = 0;
@@ -82,28 +80,32 @@ EncodedProblem encode(BWPInstance instance, int L) {
     int W = instance.W;
     EncodedProblem problem;
     problem.dirs = vector<var_id>(N);
-    problem.pos_x = vector<vector<var_id>>(N);
-    problem.pos_y = vector<vector<var_id>>(N);
+    problem.pos_x = vector<vector<var_id>>(N, vector<var_id>(W));
+    problem.pos_y = vector<vector<var_id>>(N, vector<var_id>(L));
+    problem.bitmap = vector<vector<vector<var_id>>>(N, vector<vector<var_id>>(W, vector<var_id>(L)));
 
     vector<var_id>& dirs = problem.dirs;
     vector<vector<var_id>>& pos_x = problem.pos_x;
     vector<vector<var_id>>& pos_y = problem.pos_y;
+    vector<vector<vector<var_id>>>& bitmap = problem.bitmap;
     CNF& cnf = problem.cnf;
     int& num_vars = problem.num_vars;
 
     // Initializing variables
     for(int i = 0; i < N; ++i) {
         dirs[i] = ++num_vars;
-        pos_x[i] = vector<var_id>(W);
-        pos_y[i] = vector<var_id>(L);
         for(int x = 0; x < W; ++x) {
             pos_x[i][x] = ++num_vars;
         }
         for(int y = 0; y < L; ++y) {
             pos_y[i][y] = ++num_vars;
         }
+        for(int x = 0; x < W; ++x) {
+            for(int y = 0; y < L; ++y) {
+                bitmap[i][x][y] = ++num_vars;
+            }
+        }
     }
-
     cerr << "Num variables = " << num_vars << endl;
 
     // Valid values
@@ -118,47 +120,46 @@ EncodedProblem encode(BWPInstance instance, int L) {
             ALO_pos_y[y] = pos_y[i][y];
         }
         cnf.push_back(ALO_pos_y);
-    }
 
-
-    cerr << cnf.size() << " clauses for valid constraints" << endl;
-    int prev = cnf.size();
-
-    // Position clauses
-    for(int i = 0; i < N; ++i) {
         for(int dir = 0; dir <= 1; ++dir) {
-            for(int x = W - width(i) + 1; x < W; ++x) {
-                cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_x[i][x]});
-            }
-            for(int y = L - height(i) + 1; y < L; ++y) {
-                cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_y[i][y]});
-            }
-        }
-    }
-
-
-    cerr << cnf.size() - prev << " clauses for position constraints" << endl;
-    prev = cnf.size();
-
-    // Overlapping clauses
-    for(int i = 0; i < N; ++i) {
-        for(int j = 0; j < N; ++j) {
-            if(i != j) {
-                for(int dir = 0; dir <= 1; ++dir) {
-                    for(int x = 0; x <= W - width(i); ++x) {
-                        for(int y = 0; y <= L - height(i); ++y) {
-                            for(int p = 0; p < width(i); ++p) {
-                                for(int q = 0; q < height(i); ++q) {
-                                    cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_x[i][x], -pos_y[i][y], -pos_x[j][x + p], -pos_y[j][y + q]});
-                                }
-                            }
+            for(int x = 0; x <= W - width(i); ++x) {
+                for(int y = 0; y <= L - height(i); ++y) {
+                    for(int p = 0; p < width(i); ++p) {
+                        for(int q = 0; q < height(i); ++q) {
+                            cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_x[i][x], -pos_y[i][y], bitmap[i][x + p][y + q]});
                         }
                     }
                 }
             }
         }
     }
+    cerr << cnf.size() << " clauses for valid constraints" << endl;
+    int prev = cnf.size();
 
+    // Position clauses
+    for(int i = 0; i < N; ++i) {
+        for(int dir = 0; dir <= 1; ++dir) {
+            for(int x = max(0, W - width(i) + 1); x < W; ++x) {
+                cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_x[i][x]});
+            }
+            for(int y = max(0, L - height(i) + 1); y < L; ++y) {
+                cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_y[i][y]});
+            }
+        }
+    }
+    cerr << cnf.size() - prev << " clauses for position constraints" << endl;
+    prev = cnf.size();
+
+    // Overlapping clauses
+    for(int i = 0; i < N; ++i) {
+        for(int j = i + 1; j < N; ++j) {
+            for(int x = 0; x < W; ++x) {
+                for(int y = 0; y < L; ++y) {
+                    cnf.push_back({-bitmap[i][x][y], -bitmap[j][x][y]});
+                }
+            }
+        }
+    }
     cerr << cnf.size() - prev << " clauses for overlapping constraints" << endl;
     prev = cnf.size();
 
