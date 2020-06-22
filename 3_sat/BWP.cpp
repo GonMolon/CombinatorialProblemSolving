@@ -128,10 +128,10 @@ EncodedProblem encode(BWPInstance instance, int L) {
     for(int i = 0; i < N; ++i) {
         for(int dir = 0; dir <= 1; ++dir) {
             for(int x = W - width(i) + 1; x < W; ++x) {
-                cnf.push_back({-dirs[i], -pos_x[i][x]});
+                cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_x[i][x]});
             }
             for(int y = L - height(i) + 1; y < L; ++y) {
-                cnf.push_back({-dirs[i], -pos_y[i][y]});
+                cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_y[i][y]});
             }
         }
     }
@@ -149,7 +149,7 @@ EncodedProblem encode(BWPInstance instance, int L) {
                         for(int y = 0; y <= L - height(i); ++y) {
                             for(int p = 0; p < width(i); ++p) {
                                 for(int q = 0; q < height(i); ++q) {
-                                    cnf.push_back({-dirs[i], -pos_x[i][x], -pos_y[i][y], -pos_x[j][x + p], -pos_y[j][y + q]});
+                                    cnf.push_back({(1 - 2 * dir) * dirs[i], -pos_x[i][x], -pos_y[i][y], -pos_x[j][x + p], -pos_y[j][y + q]});
                                 }
                             }
                         }
@@ -179,7 +179,7 @@ int var_to_value(const vector<var_id>& vars, const Assignment& assignment) {
 void print_solution(const BWPInstance& instance, const EncodedProblem& problem, const Assignment& assignment, int L) {
     cout << L << endl;
     for(int i = 0; i < instance.N; ++i) {
-        int dir = problem.dirs[i];
+        int dir = assignment[problem.dirs[i]] > 0;
         int x = var_to_value(problem.pos_x[i], assignment);
         int y = var_to_value(problem.pos_y[i], assignment);
         cout << x << " " << y << " " << x + width(i) - 1 << " " << y + height(i) - 1 << endl;
@@ -199,14 +199,19 @@ int main() {
     // So we do a linear search instead of a binary one, 
     // and starting from an upper bound of L instead of lower bound.
     while(true) {
+        cerr << "L = " << L << endl;
         EncodedProblem problem = encode(instance, L);
         Assignment assignment = find_assignment(problem.num_vars, problem.cnf);
-        if(L == instance.L_lower_bound || assignment.size() == 0) {
+        if(assignment.size() == 0) {
             print_solution(instance, prev_problem, prev_assignment, L+1);
             break;
         }
         prev_problem = problem;
         prev_assignment = assignment;
         --L;
+        if(L < instance.L_lower_bound) {
+            print_solution(instance, prev_problem, prev_assignment, L+1);
+            break;
+        }
     }
 }
