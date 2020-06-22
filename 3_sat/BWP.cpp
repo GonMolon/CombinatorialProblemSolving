@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <array>
 
 #include "../include/BWPInstance.hh"
 
@@ -13,7 +12,6 @@ typedef vector<bool> Assignment;
 
 void write_codification(int num_vars, const CNF& cnf) {
     ofstream codification("encoded.cnf");
-    codification << "c test" << endl;
     codification << "p cnf " << num_vars << " " << cnf.size() << endl;
     for(int i = 0; i < cnf.size(); ++i) {
         for(int j = 0; j < cnf[i].size(); ++j) {
@@ -27,36 +25,29 @@ void write_codification(int num_vars, const CNF& cnf) {
 Assignment find_assignment(int num_vars, const CNF& cnf) {
     write_codification(num_vars, cnf);
 
-    Assignment assignment(num_vars );
+    Assignment assignment(num_vars);
 
-    cerr << "Calling solver" << endl;
-    FILE *output = popen("lingeling -o solution encoded.cnf", "r");
-    if(!output){
-        exit(1);
-    }
-    const int MAX_BUFFER = 2048;
-    array<char, MAX_BUFFER> buffer;
-    while(!feof(output)) {
-        if(fgets(buffer.data(), MAX_BUFFER, output) != NULL) {
-            istringstream iss(string(buffer.data()));
-            char c;
-            iss >> c;
-            if(c == 's') {
-                string result;
-                iss >> result;
-                if(result == "UNSATISFIABLE") {
-                    return Assignment(0);
-                }
+    system("lingeling encoded.cnf > output.cnf");
+    ifstream output("output.cnf");
+    string line;
+    while(getline(output, line)) {
+        istringstream iss(line);
+        char c;
+        iss >> c;
+        if(c == 's') {
+            string result;
+            iss >> result;
+            if(result == "UNSATISFIABLE") {
+                return Assignment(0);
             }
-            if(c == 'v') {
-                int var;
-                while(iss >> var) {
-                    assignment[abs(var)] = var > 0;
-                }
+        } else if(c == 'v') {
+            int var;
+            while(iss >> var) {
+                assignment[abs(var)] = var > 0;
             }
         }
     }
-    pclose(output);
+    output.close();
     cerr << "Solver finished" << endl;
 
     return assignment;

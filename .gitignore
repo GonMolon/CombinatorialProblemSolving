@@ -3,5 +3,5 @@ checker
 output/
 *.o
 .DS_Store
-solution
 encoded.cnf
+output.cnf
