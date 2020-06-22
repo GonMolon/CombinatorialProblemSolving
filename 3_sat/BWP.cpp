@@ -142,9 +142,9 @@ EncodedProblem encode(BWPInstance instance, int L) {
 
     // Overlapping clauses
     for(int i = 0; i < N; ++i) {
-        for(int dir = 0; dir <= 1; ++dir) {
-            for(int j = 0; j < N; ++j) {
-                if(i != j) {
+        for(int j = 0; j < N; ++j) {
+            if(i != j) {
+                for(int dir = 0; dir <= 1; ++dir) {
                     for(int x = 0; x <= W - width(i); ++x) {
                         for(int y = 0; y <= L - height(i); ++y) {
                             for(int p = 0; p < width(i); ++p) {
