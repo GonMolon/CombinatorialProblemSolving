@@ -75,11 +75,11 @@ EncodedProblem encode(BWPInstance instance, int L) {
     problem.pos_y = vector<vector<var_id>>(N, vector<var_id>(L));
     problem.bitmap = vector<vector<vector<var_id>>>(N, vector<vector<var_id>>(W, vector<var_id>(L)));
 
-    vector<var_id>& dirs = problem.dirs;
-    vector<vector<var_id>>& pos_x = problem.pos_x;
-    vector<vector<var_id>>& pos_y = problem.pos_y;
-    vector<vector<vector<var_id>>>& bitmap = problem.bitmap;
-    CNF& cnf = problem.cnf;
+    auto& dirs = problem.dirs;
+    auto& pos_x = problem.pos_x;
+    auto& pos_y = problem.pos_y;
+    auto& bitmap = problem.bitmap;
+    auto& cnf = problem.cnf;
     int& num_vars = problem.num_vars;
 
     // Initializing variables
@@ -104,11 +104,17 @@ EncodedProblem encode(BWPInstance instance, int L) {
         vector<var_id> ALO_pos_x(W);
         for(int x = 0; x < W; ++x) {
             ALO_pos_x[x] = pos_x[i][x];
+            for(int x2 = x+1; x2 < W; ++x2) {
+                cnf.push_back({-pos_x[i][x], -pos_x[i][x2]});
+            }
         }
         cnf.push_back(ALO_pos_x);
         vector<var_id> ALO_pos_y(L);
         for(int y = 0; y < L; ++y) {
             ALO_pos_y[y] = pos_y[i][y];
+            for(int y2 = y+1; y2 < L; ++y2) {
+                cnf.push_back({-pos_y[i][y], -pos_y[i][y2]});
+            }
         }
         cnf.push_back(ALO_pos_y);
 
